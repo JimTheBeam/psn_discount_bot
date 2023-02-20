@@ -15,3 +15,10 @@ func (b *TgBot) SendMessage(msg tgbotapi.Chattable) {
 		b.log.WithError(err).Error("send message")
 	}
 }
+
+func (b *TgBot) NewMessage(chatID int64, text string) tgbotapi.MessageConfig {
+	message := tgbotapi.NewMessage(chatID, text)
+	message.DisableWebPagePreview = true
+
+	return message
+}

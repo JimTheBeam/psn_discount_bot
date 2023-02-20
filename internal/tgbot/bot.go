@@ -4,11 +4,15 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"psn_discount_bot/internal/logger"
 	"psn_discount_bot/internal/model"
+	"psn_discount_bot/internal/model/payload"
 )
 
 type Service interface {
-	SubscribeToGame(userID int, url string) (string, error)
+	SubscribeToGame(data payload.Subscribe) (string, error)
+	Unsubscribe(userID, gameID int) (string, error)
 	CreateUser(currentUser model.User)
+
+	GetGame(userID int, url string) (model.Game, *model.UsersGames, error)
 }
 
 type TgBot struct {
@@ -48,6 +52,11 @@ func (b *TgBot) Run() {
 	for {
 		select {
 		case update := <-updates:
+
+			if update.CallbackQuery != nil {
+				b.CallbackRouter(update)
+			}
+
 			if update.Message == nil {
 				continue
 			}
@@ -59,7 +68,7 @@ func (b *TgBot) Run() {
 				continue
 			}
 
-			b.subscribeToGame(update)
+			b.getGame(update)
 
 		case <-b.quit:
 			return

@@ -26,6 +26,24 @@ func (r *Repo) GetGameByURL(url string) (*model.Game, error) {
 	return &game, nil
 }
 
+func (r *Repo) GetGameByID(gameID int) (*model.Game, error) {
+	var game model.Game
+
+	err := r.pg.DB().NewSelect().Model(&game).
+		Where("id = ?", gameID).
+		Relation("Prices").
+		Scan(context.Background())
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+
+		return nil, fmt.Errorf("pg: %w", err)
+	}
+
+	return &game, nil
+}
+
 func (r *Repo) GetGamesWithChangedPrice() ([]model.Game, error) {
 	var games []model.Game
 
@@ -103,4 +121,35 @@ func (r *Repo) Subscribe(sub model.UsersGames) error {
 	}
 
 	return nil
+}
+
+func (r *Repo) Unsubscribe(gameID, userTelegramID int) error {
+	_, err := r.pg.DB().NewDelete().Model(&model.UsersGames{}).
+		Where("game_id = ?", gameID).
+		Where("user_telegram_id = ?", userTelegramID).
+		Exec(context.Background())
+	if err != nil {
+		return fmt.Errorf("pg: %w", err)
+	}
+
+	return nil
+}
+
+func (r *Repo) GetSubscription(gameID, userTgID int) (*model.UsersGames, error) {
+	var subscription model.UsersGames
+
+	err := r.pg.DB().NewSelect().Model(&subscription).
+		Where("user_telegram_id = ?", userTgID).
+		Where("game_id = ?", gameID).
+		Where("deleted_at IS NULL").
+		Scan(context.Background())
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+
+		return nil, fmt.Errorf("pg: %w", err)
+	}
+
+	return &subscription, nil
 }

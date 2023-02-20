@@ -3,22 +3,68 @@ package service
 import (
 	"errors"
 	"fmt"
-	"github.com/uptrace/bun"
 	"psn_discount_bot/internal/model"
+	"psn_discount_bot/internal/model/payload"
 )
 
 var (
-	ErrInvalidURL        = errors.New("url is invalid")
-	ErrAlreadySubscribed = errors.New("already subscribed to this game")
-	ErrInternal          = errors.New("internal error")
+	ErrInvalidURL = errors.New("url is invalid")
+	ErrInternal   = errors.New("internal error")
 )
 
-func (s *Service) SubscribeToGame(userID int, url string) (string, error) {
+func (s *Service) SubscribeToGame(data payload.Subscribe) (string, error) {
+	game, err := s.repo.GetGameByID(data.GameID)
+	if err != nil {
+		s.log.WithError(err).WithField("game_id", data.GameID).Error("get game")
+
+		return "", ErrInternal
+	}
+
+	if game == nil {
+		s.log.WithField("game_id", data.GameID).Error("game is nil")
+
+		return "", ErrInternal
+	}
+
+	isSubscribed, err := s.repo.IsSubscribed(game.ID, data.UserID)
+	if err != nil {
+		s.log.WithError(err).WithField("game_id", data.GameID).
+			WithField("user_id", data.UserID).
+			Error("is subscribed")
+
+		return "", ErrInternal
+	}
+
+	responseMsg := fmt.Sprintf("You have subscribed!\nGame: %s\nPrice notified: %.2f",
+		game.Name,
+		data.Price,
+	)
+
+	if isSubscribed {
+		return responseMsg, nil
+	}
+
+	sub := model.UsersGames{
+		UserTelegramID:    data.UserID,
+		GameID:            data.GameID,
+		SubscriptionPrice: data.Price,
+	}
+
+	if err := s.repo.Subscribe(sub); err != nil {
+		s.log.WithError(err).WithField("game_id", data.GameID).Error("subscribe to a game")
+
+		return "", ErrInternal
+	}
+
+	return responseMsg, nil
+}
+
+func (s *Service) GetGame(userID int, url string) (model.Game, *model.UsersGames, error) {
 	game, err := s.repo.GetGameByURL(url)
 	if err != nil {
 		s.log.WithError(err).WithField("url", url).Error("get game")
 
-		return "", ErrInternal
+		return model.Game{}, nil, ErrInternal
 	}
 
 	if game == nil {
@@ -26,14 +72,14 @@ func (s *Service) SubscribeToGame(userID int, url string) (string, error) {
 		if err != nil {
 			s.log.WithError(err).WithField("url", url).Error("parse game")
 
-			return "", ErrInvalidURL
+			return model.Game{}, nil, ErrInvalidURL
 		}
 
 		game, err = s.repo.CreateGame(parsedGame)
 		if err != nil {
 			s.log.WithError(err).WithField("url", url).Error("create game")
 
-			return "", ErrInternal
+			return model.Game{}, nil, ErrInternal
 		}
 
 		game.SetGameIDToPrices()
@@ -42,44 +88,49 @@ func (s *Service) SubscribeToGame(userID int, url string) (string, error) {
 		if err != nil {
 			s.log.WithError(err).WithField("game_id", game.ID).Error("create prices")
 
-			return "", ErrInternal
+			return model.Game{}, nil, ErrInternal
 		}
 	}
 
 	if game == nil {
 		s.log.WithError(err).WithField("url", url).Error("game is nil")
 
-		return "", ErrInternal
+		return model.Game{}, nil, ErrInternal
 	}
 
-	isSubscribed, err := s.repo.IsSubscribed(game.ID, userID)
+	subscription, err := s.repo.GetSubscription(game.ID, userID)
 	if err != nil {
-		s.log.WithError(err).WithField("url", url).Error("is subscribed")
+		s.log.WithError(err).WithField("game_id", game.ID).
+			WithField("user_id", userID).
+			Error("get subscription")
+
+		return model.Game{}, nil, ErrInternal
+	}
+
+	return *game, subscription, nil
+}
+
+func (s *Service) Unsubscribe(userID, gameID int) (string, error) {
+	game, err := s.repo.GetGameByID(gameID)
+	if err != nil {
+		s.log.WithError(err).WithField("game_id", gameID).Error("get game by id")
 
 		return "", ErrInternal
 	}
 
-	if isSubscribed {
-		return "", ErrAlreadySubscribed
-	}
-
-	sub := model.UsersGames{
-		BaseModel:         bun.BaseModel{},
-		UserTelegramID:    userID,
-		GameID:            game.ID,
-		SubscriptionPrice: game.GetMinPrice(),
-	}
-
-	if err := s.repo.Subscribe(sub); err != nil {
-		s.log.WithError(err).WithField("url", url).Error("subscribe to a game")
+	if game == nil {
+		s.log.WithError(err).WithField("game_id", gameID).Error("game not found")
 
 		return "", ErrInternal
 	}
 
-	responseMsg := fmt.Sprintf("You have subscribed!\nGame: %s\nPrice:\n%s",
-		game.Name,
-		game.GetPriceText(),
-	)
+	if err := s.repo.Unsubscribe(gameID, userID); err != nil {
+		s.log.WithError(err).WithField("game_id", gameID).Error("unsubscribe")
+
+		return "", ErrInternal
+	}
+
+	responseMsg := fmt.Sprintf("Unsubscribed!\nGame: %s", game.Name)
 
 	return responseMsg, nil
 }

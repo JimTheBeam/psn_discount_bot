@@ -22,12 +22,14 @@ func (b *TgBot) startCommand(update tgbotapi.Update) {
 
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, text)
 
+	msg.ReplyMarkup = model.NewSubscriptionListKeyboard()
+
 	if _, err := b.Bot.Send(msg); err != nil {
 		b.log.WithError(err).Error("send message")
 	}
 }
 
-func (b *TgBot) subscribeToGame(update tgbotapi.Update) {
+func (b *TgBot) getGame(update tgbotapi.Update) {
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, update.Message.Text)
 	msg.ReplyToMessageID = update.Message.MessageID
 
@@ -39,12 +41,19 @@ func (b *TgBot) subscribeToGame(update tgbotapi.Update) {
 		b.SendMessage(msg)
 	}
 
-	responseMsg, err := b.service.SubscribeToGame(int(update.Message.From.ID), url)
+	game, subscription, err := b.service.GetGame(int(update.Message.From.ID), url)
 	if err != nil {
-		responseMsg = err.Error()
+		msg.Text = err.Error()
+		b.SendMessage(msg)
 	}
 
-	msg.Text = responseMsg
+	if subscription == nil {
+		msg.Text = game.Name + "\nChoose price you want to subscribe"
+		msg.ReplyMarkup = model.NewGameKeyboardWithPrices(game.Prices)
+	} else {
+		msg.Text = game.Name + "\n" + game.GetPriceText() + "\n"
+		msg.ReplyMarkup = model.NewGameUnsubscribeKeyboard(game.ID)
+	}
 
 	b.SendMessage(msg)
 }
