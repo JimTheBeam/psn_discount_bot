@@ -11,6 +11,7 @@ const (
 	SubscribeCallbackData        = "subscribe"
 	UnsubscribeCallbackData      = "unsubscribe"
 	SubscriptionListCallbackData = "subscriptions"
+	GameCallbackData             = "game"
 )
 
 const CallbackDelimiter = ":"
@@ -54,4 +55,29 @@ func NewSubscriptionListKeyboard() tgbotapi.InlineKeyboardMarkup {
 			tgbotapi.NewInlineKeyboardButtonData("Get my subscriptions", SubscriptionListCallbackData),
 		),
 	)
+}
+
+func NewSubscriptionsListKeyboard(subs []UsersGames) tgbotapi.InlineKeyboardMarkup {
+	rows := make([][]tgbotapi.InlineKeyboardButton, 0, len(subs))
+
+	for i := range subs {
+		callback := fmt.Sprintf("%s%s%d",
+			GameCallbackData,
+			CallbackDelimiter,
+			subs[i].GameID,
+		)
+
+		row := tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(subs[i].Game.Name, callback),
+		)
+
+		rows = append(rows, row)
+	}
+
+	//todo: navigation buttons
+	cancelRow := tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Cancel", CancelCallbackData))
+
+	rows = append(rows, cancelRow)
+
+	return tgbotapi.NewInlineKeyboardMarkup(rows...)
 }

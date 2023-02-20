@@ -18,6 +18,9 @@ func (b *TgBot) CommandRouter(update tgbotapi.Update) {
 
 		return
 
+	case "subscription_list":
+		b.getSubscriptions(update)
+
 	case "help":
 		msg.Text = `Send me url from psn store and I will tell you when the price reduces`
 	case "status":
@@ -26,9 +29,7 @@ func (b *TgBot) CommandRouter(update tgbotapi.Update) {
 		msg.Text = "I don't know that command"
 	}
 
-	if _, err := b.Bot.Send(msg); err != nil {
-		b.log.WithError(err).Error("send message")
-	}
+	b.SendMessage(msg)
 }
 
 func (b *TgBot) CallbackRouter(update tgbotapi.Update) {
@@ -43,17 +44,17 @@ func (b *TgBot) CallbackRouter(update tgbotapi.Update) {
 	switch method {
 	case model.SubscribeCallbackData:
 		if len(split) != 3 {
-			b.SendText(int(chatID), service.ErrInternal.Error())
+			b.SendText(chatID, service.ErrInternal.Error())
 		}
 
 		gameID, err := strconv.Atoi(split[1])
 		if err != nil {
-			b.SendText(int(chatID), service.ErrInternal.Error())
+			b.SendText(chatID, service.ErrInternal.Error())
 		}
 
 		price, err := strconv.ParseFloat(split[2], 64)
 		if err != nil {
-			b.SendText(int(chatID), service.ErrInternal.Error())
+			b.SendText(chatID, service.ErrInternal.Error())
 		}
 
 		data := payload.Subscribe{
@@ -64,7 +65,7 @@ func (b *TgBot) CallbackRouter(update tgbotapi.Update) {
 
 		responseText, err := b.service.SubscribeToGame(data)
 		if err != nil {
-			b.SendText(int(chatID), err.Error())
+			b.SendText(chatID, err.Error())
 			return
 		}
 
@@ -79,13 +80,13 @@ func (b *TgBot) CallbackRouter(update tgbotapi.Update) {
 		if len(split) > 1 {
 			gameID, err = strconv.Atoi(split[1])
 			if err != nil {
-				b.SendText(int(chatID), service.ErrInternal.Error())
+				b.SendText(chatID, service.ErrInternal.Error())
 			}
 		}
 
 		responseText, err := b.service.Unsubscribe(userID, gameID)
 		if err != nil {
-			b.SendText(int(chatID), err.Error())
+			b.SendText(chatID, err.Error())
 			return
 		}
 

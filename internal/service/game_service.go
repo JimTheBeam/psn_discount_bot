@@ -134,3 +134,14 @@ func (s *Service) Unsubscribe(userID, gameID int) (string, error) {
 
 	return responseMsg, nil
 }
+
+func (s *Service) GetSubscriptions(data payload.Subscriptions) ([]model.UsersGames, error) {
+	subscriptions, err := s.repo.GetSubscriptionList(data)
+	if err != nil {
+		s.log.WithError(err).WithField("user_id", data.UserID).Error("get subscriptions")
+
+		return nil, ErrInternal
+	}
+
+	return subscriptions, nil
+}

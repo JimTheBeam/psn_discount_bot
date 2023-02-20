@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"psn_discount_bot/internal/model"
+	"psn_discount_bot/internal/model/payload"
 )
 
 func (r *Repo) GetGameByURL(url string) (*model.Game, error) {
@@ -101,9 +102,9 @@ func (r *Repo) GetAllGames() ([]model.Game, error) {
 	return games, nil
 }
 
-func (r *Repo) IsSubscribed(gameID, userTgID int) (bool, error) {
+func (r *Repo) IsSubscribed(gameID, userID int) (bool, error) {
 	exist, err := r.pg.DB().NewSelect().Model(&model.UsersGames{}).
-		Where("user_telegram_id = ?", userTgID).
+		Where("user_telegram_id = ?", userID).
 		Where("game_id = ?", gameID).
 		Where("deleted_at IS NULL").
 		Exists(context.Background())
@@ -135,11 +136,11 @@ func (r *Repo) Unsubscribe(gameID, userTelegramID int) error {
 	return nil
 }
 
-func (r *Repo) GetSubscription(gameID, userTgID int) (*model.UsersGames, error) {
+func (r *Repo) GetSubscription(gameID, userID int) (*model.UsersGames, error) {
 	var subscription model.UsersGames
 
 	err := r.pg.DB().NewSelect().Model(&subscription).
-		Where("user_telegram_id = ?", userTgID).
+		Where("user_telegram_id = ?", userID).
 		Where("game_id = ?", gameID).
 		Where("deleted_at IS NULL").
 		Scan(context.Background())
@@ -152,4 +153,29 @@ func (r *Repo) GetSubscription(gameID, userTgID int) (*model.UsersGames, error) 
 	}
 
 	return &subscription, nil
+}
+
+func (r *Repo) GetSubscriptionList(filter payload.Subscriptions) ([]model.UsersGames, error) {
+	var subscriptions []model.UsersGames
+
+	query := r.pg.DB().NewSelect().Model(&subscriptions).
+		Where("?TableAlias.user_telegram_id = ?", filter.UserID).
+		Where("?TableAlias.deleted_at IS NULL").
+		Offset(filter.Offset).
+		Relation("Game").
+		OrderExpr("?TableAlias.created_at ASC")
+
+	if filter.Limit > 0 {
+		query.Limit(filter.Limit)
+	}
+
+	if err := query.Scan(context.Background()); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+
+		return nil, fmt.Errorf("pg: %w", err)
+	}
+
+	return subscriptions, nil
 }

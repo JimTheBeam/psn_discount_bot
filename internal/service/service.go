@@ -3,6 +3,7 @@ package service
 import (
 	"psn_discount_bot/internal/logger"
 	"psn_discount_bot/internal/model"
+	"psn_discount_bot/internal/model/payload"
 )
 
 type Repository interface {
@@ -14,6 +15,7 @@ type Repository interface {
 	Subscribe(sub model.UsersGames) error
 	Unsubscribe(gameID, userTelegramID int) error
 	GetSubscription(gameID, userTgID int) (*model.UsersGames, error)
+	GetSubscriptionList(filter payload.Subscriptions) ([]model.UsersGames, error)
 	CreatePrices(prices []model.Price) ([]model.Price, error)
 
 	// user

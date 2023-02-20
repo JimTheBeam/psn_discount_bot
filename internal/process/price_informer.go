@@ -6,7 +6,7 @@ import (
 )
 
 type Bot interface {
-	SendText(chatID int, message string)
+	SendText(chatID int64, message string)
 }
 
 type PriceInformer struct {
@@ -89,7 +89,7 @@ func (p *PriceInformer) informAboutPriceChange() {
 		for u := range users {
 			message := games[i].PriceChangedText()
 
-			p.bot.SendText(users[u].User.TelegramChatID, message)
+			p.bot.SendText(int64(users[u].User.TelegramChatID), message)
 		}
 	}
 }

@@ -10,6 +10,7 @@ import (
 type Service interface {
 	SubscribeToGame(data payload.Subscribe) (string, error)
 	Unsubscribe(userID, gameID int) (string, error)
+	GetSubscriptions(data payload.Subscriptions) ([]model.UsersGames, error)
 	CreateUser(currentUser model.User)
 
 	GetGame(userID int, url string) (model.Game, *model.UsersGames, error)
