@@ -1,0 +1,28 @@
+app:
+  bot:
+    token: "BOT_TOKEN"
+    debug: true
+    updates_timeout: 60
+  log:
+    level: error
+  http_client:
+    timeout: 10s
+    tls_handshake_timeout: 10s
+    dialer_timeout: 10s
+  processors:
+    price_checker:
+      disabled: false
+      cron_time: "0 */6 * * *"
+    price_informer:
+      disabled: false
+      cron_time: "0 19 * * *"
+
+connections:
+  postgres:
+    addr: "localhost:5432"
+    database: database
+    username: postgres_username
+    password: postgres_password
+    pool_size: 4
+    timeout: 5s
+    debug: false
