@@ -1,0 +1,63 @@
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: [ "Tests" ]
+    branches: [ main ]
+    types:
+      - completed
+
+  push:
+    branches: [ main ]
+
+jobs:
+  tests:
+    uses: ./.github/workflows/reusable_tests.yml
+
+
+  build-and-push-docker-image:
+    needs: tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
+
+      - name: Build binary app
+        run: CGO_ENABLED=0 GOOS=linux go build -ldflags "-s -w" -a -installsuffix cgo -o binfile
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Build and push
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/psn_discount_bot:latest
+
+
+  cd-part:
+    needs: [tests,build-and-push-docker-image]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deliver app to server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USERNAME }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          script: |
+            cd /opt/psn_discount_bot
+            docker-compose stop app_psn_discount_bot
+            docker-compose rm -f app_psn_discount_bot
+            docker rmi ${{ secrets.DOCKER_HUB_USERNAME }}/psn_discount_bot:latest
+            docker-compose pull app_psn_discount_bot
+            docker-compose up -d app_psn_discount_bot

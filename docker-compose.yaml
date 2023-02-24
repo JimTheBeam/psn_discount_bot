@@ -1,0 +1,28 @@
+version: '3'
+
+services:
+  app_psn_discount_bot:
+    depends_on:
+      - db_postgresql
+    container_name: app_psn_discount_bot
+    image: jimthebeam/psn_discount_bot:latest
+    restart: unless-stopped
+    volumes:
+      - ./app/psn_discount_config.yaml:/app/config.yaml
+
+  db_postgresql:
+    container_name: db_postgresql_golib
+    image: postgres:14.4
+    restart: unless-stopped
+    hostname: db_postgresql
+    volumes:
+      - db_postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: "postgres_database"
+      POSTGRES_USER: "postgres_user"
+      POSTGRES_PASSWORD: "postgres_password"
+    ports:
+      - 5432:5432
+
+volumes:
+  db_postgres_data:

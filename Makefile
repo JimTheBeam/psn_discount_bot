@@ -11,4 +11,10 @@ run:
 	go run main.go -c config.yaml
 
 build:
-	CGO_ENABLED=0 go build -ldflags "-s -w" -a -installsuffix cgo
+	CGO_ENABLED=0 go build -ldflags "-s -w" -a -installsuffix cgo -o binfile
+
+dockerbuild: build
+	docker build -t psn_discount_bot .
+
+dockerrun:
+	docker run -d --name psn_discount psn_discount_bot
