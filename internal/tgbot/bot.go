@@ -9,11 +9,12 @@ import (
 
 type Service interface {
 	SubscribeToGame(data payload.Subscribe) (string, error)
-	Unsubscribe(userID, gameID int) (string, error)
+	Unsubscribe(userID, gameID int) (model.Game, error)
 	GetSubscriptions(data payload.Subscriptions) ([]model.UsersGames, error)
 	CreateUser(currentUser model.User)
 
 	GetGame(userID int, url string) (model.Game, *model.UsersGames, error)
+	GetGameByID(userID, gameID int) (model.Game, *model.UsersGames, error)
 }
 
 type TgBot struct {

@@ -35,6 +35,8 @@ func NewGameKeyboardWithPrices(prices []Price) tgbotapi.InlineKeyboardMarkup {
 		rows = append(rows, row)
 	}
 
+	rows = append(rows, newSubscriptionsRow())
+
 	cancelRow := tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Cancel", CancelCallbackData))
 
 	rows = append(rows, cancelRow)
@@ -46,14 +48,12 @@ func NewGameUnsubscribeKeyboard(gameID int) tgbotapi.InlineKeyboardMarkup {
 	callbackData := UnsubscribeCallbackData + CallbackDelimiter + strconv.Itoa(gameID)
 	cancelRow := tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Unsubscribe", callbackData))
 
-	return tgbotapi.NewInlineKeyboardMarkup(cancelRow)
+	return tgbotapi.NewInlineKeyboardMarkup(cancelRow, newSubscriptionsRow())
 }
 
 func NewSubscriptionListKeyboard() tgbotapi.InlineKeyboardMarkup {
 	return tgbotapi.NewInlineKeyboardMarkup(
-		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("Get my subscriptions", SubscriptionListCallbackData),
-		),
+		newSubscriptionsRow(),
 	)
 }
 
@@ -80,4 +80,10 @@ func NewSubscriptionsListKeyboard(subs []UsersGames) tgbotapi.InlineKeyboardMark
 	rows = append(rows, cancelRow)
 
 	return tgbotapi.NewInlineKeyboardMarkup(rows...)
+}
+
+func newSubscriptionsRow() []tgbotapi.InlineKeyboardButton {
+	return tgbotapi.NewInlineKeyboardRow(
+		tgbotapi.NewInlineKeyboardButtonData("To my subscriptions", SubscriptionListCallbackData),
+	)
 }

@@ -10,6 +10,9 @@ import (
 )
 
 func (b *TgBot) CommandRouter(update tgbotapi.Update) {
+	chatID := update.Message.Chat.ID
+	userID := update.Message.From.ID
+
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
 
 	switch update.Message.Command() {
@@ -19,7 +22,9 @@ func (b *TgBot) CommandRouter(update tgbotapi.Update) {
 		return
 
 	case "subscription_list":
-		b.getSubscriptions(update)
+		b.getSubscriptions(chatID, userID)
+
+		return
 
 	case "help":
 		msg.Text = `Send me url from psn store and I will tell you when the price reduces`
@@ -84,15 +89,41 @@ func (b *TgBot) CallbackRouter(update tgbotapi.Update) {
 			}
 		}
 
-		responseText, err := b.service.Unsubscribe(userID, gameID)
+		game, err := b.service.Unsubscribe(userID, gameID)
 		if err != nil {
 			b.SendText(chatID, err.Error())
 			return
 		}
 
-		msg := tgbotapi.NewEditMessageText(chatID, fromMessageID, responseText)
+		text, replyMarkup := getTextAndMarkupForGame(game, nil)
+
+		msg := tgbotapi.NewEditMessageTextAndMarkup(chatID, fromMessageID, text, replyMarkup)
 
 		b.SendMessage(msg)
+
+	case model.GameCallbackData:
+		var gameID int
+		if len(split) > 1 {
+			gameID, err = strconv.Atoi(split[1])
+			if err != nil {
+				b.SendText(chatID, service.ErrInternal.Error())
+			}
+		}
+
+		game, subscription, err := b.service.GetGameByID(userID, gameID)
+		if err != nil {
+			b.SendText(chatID, err.Error())
+			return
+		}
+
+		text, replyMarkup := getTextAndMarkupForGame(game, subscription)
+
+		msg := tgbotapi.NewEditMessageTextAndMarkup(chatID, fromMessageID, text, replyMarkup)
+
+		b.SendMessage(msg)
+
+	case model.SubscriptionListCallbackData:
+		b.getSubscriptions(chatID, int64(userID))
 
 	case model.CancelCallbackData:
 		msg := tgbotapi.NewEditMessageText(chatID, fromMessageID, update.CallbackQuery.Message.Text)

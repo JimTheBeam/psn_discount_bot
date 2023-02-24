@@ -1,6 +1,7 @@
 package tgbot
 
 import (
+	"fmt"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"psn_discount_bot/internal/model"
 	"psn_discount_bot/internal/model/payload"
@@ -40,30 +41,26 @@ func (b *TgBot) getGame(update tgbotapi.Update) {
 		msg.Text = ErrMsg
 
 		b.SendMessage(msg)
+
+		return
 	}
 
 	game, subscription, err := b.service.GetGame(int(update.Message.From.ID), url)
 	if err != nil {
 		msg.Text = err.Error()
 		b.SendMessage(msg)
+
+		return
 	}
 
-	if subscription == nil {
-		msg.Text = game.Name + "\nChoose price you want to subscribe"
-		msg.ReplyMarkup = model.NewGameKeyboardWithPrices(game.Prices)
-	} else {
-		msg.Text = game.Name + "\n" + game.GetPriceText() + "\n"
-		msg.ReplyMarkup = model.NewGameUnsubscribeKeyboard(game.ID)
-	}
+	msg.Text, msg.ReplyMarkup = getTextAndMarkupForGame(game, subscription)
 
 	b.SendMessage(msg)
 }
 
-func (b *TgBot) getSubscriptions(update tgbotapi.Update) {
-	chatID := update.Message.Chat.ID
-
+func (b *TgBot) getSubscriptions(chatID, userID int64) {
 	data := payload.Subscriptions{
-		UserID: int(update.Message.From.ID),
+		UserID: int(userID),
 		Limit:  0,
 		Offset: 0,
 	}
@@ -86,4 +83,24 @@ func (b *TgBot) getSubscriptions(update tgbotapi.Update) {
 	msg.ReplyMarkup = model.NewSubscriptionsListKeyboard(subs)
 
 	b.SendMessage(msg)
+}
+
+func getTextAndMarkupForGame(game model.Game, subscription *model.UsersGames) (string, tgbotapi.InlineKeyboardMarkup) {
+	var (
+		text        string
+		replyMarkup tgbotapi.InlineKeyboardMarkup
+	)
+
+	if subscription == nil {
+		text = game.Name + "\nChoose price you want to subscribe"
+		replyMarkup = model.NewGameKeyboardWithPrices(game.Prices)
+	} else {
+		text = fmt.Sprintf("%s\nCurrent price:\n%s\n\nSubscription price: %.2f",
+			game.Name, game.GetPriceText(), subscription.SubscriptionPrice,
+		)
+
+		replyMarkup = model.NewGameUnsubscribeKeyboard(game.ID)
+	}
+
+	return text, replyMarkup
 }

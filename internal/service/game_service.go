@@ -35,7 +35,7 @@ func (s *Service) SubscribeToGame(data payload.Subscribe) (string, error) {
 		return "", ErrInternal
 	}
 
-	responseMsg := fmt.Sprintf("You have subscribed!\nGame: %s\nPrice notified: %.2f",
+	responseMsg := fmt.Sprintf("You have subscribed!\nGame: %s\n\nPrice notified: %.2f",
 		game.Name,
 		data.Price,
 	)
@@ -110,29 +110,53 @@ func (s *Service) GetGame(userID int, url string) (model.Game, *model.UsersGames
 	return *game, subscription, nil
 }
 
-func (s *Service) Unsubscribe(userID, gameID int) (string, error) {
+func (s *Service) GetGameByID(userID, gameID int) (model.Game, *model.UsersGames, error) {
+	game, err := s.repo.GetGameByID(gameID)
+	if err != nil {
+		s.log.WithError(err).WithField("game_id", gameID).Error("get game")
+
+		return model.Game{}, nil, ErrInternal
+	}
+
+	if game == nil {
+		s.log.WithError(err).WithField("game_id", gameID).Error("game is nil")
+
+		return model.Game{}, nil, ErrInternal
+	}
+
+	subscription, err := s.repo.GetSubscription(game.ID, userID)
+	if err != nil {
+		s.log.WithError(err).WithField("game_id", game.ID).
+			WithField("user_id", userID).
+			Error("get subscription")
+
+		return model.Game{}, nil, ErrInternal
+	}
+
+	return *game, subscription, nil
+}
+
+func (s *Service) Unsubscribe(userID, gameID int) (model.Game, error) {
 	game, err := s.repo.GetGameByID(gameID)
 	if err != nil {
 		s.log.WithError(err).WithField("game_id", gameID).Error("get game by id")
 
-		return "", ErrInternal
+		return model.Game{}, ErrInternal
 	}
 
 	if game == nil {
 		s.log.WithError(err).WithField("game_id", gameID).Error("game not found")
 
-		return "", ErrInternal
+		return model.Game{}, ErrInternal
 	}
 
 	if err := s.repo.Unsubscribe(gameID, userID); err != nil {
 		s.log.WithError(err).WithField("game_id", gameID).Error("unsubscribe")
 
-		return "", ErrInternal
+		return model.Game{}, ErrInternal
 	}
 
-	responseMsg := fmt.Sprintf("Unsubscribed!\nGame: %s", game.Name)
-
-	return responseMsg, nil
+	return *game, nil
 }
 
 func (s *Service) GetSubscriptions(data payload.Subscriptions) ([]model.UsersGames, error) {
