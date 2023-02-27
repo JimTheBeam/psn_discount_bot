@@ -63,11 +63,13 @@ func getTextAndMarkupForGame(game model.Game, subscription *model.UsersGames) (s
 	)
 
 	if subscription == nil {
-		text = game.Name + "\nChoose price you want to subscribe"
+		text = game.Name + "\nChoose price you want to subscribe\n\n" + game.Url
 		replyMarkup = model.NewGameKeyboardWithPrices(game.Prices)
 	} else {
-		text = fmt.Sprintf("%s\nCurrent price:\n%s\n\nSubscription price: %.2f",
-			game.Name, game.GetPriceText(), subscription.SubscriptionPrice,
+		text = fmt.Sprintf("%s\nCurrent price:\n%s\n\nSubscription price: %.2f\n\n%s",
+			game.Name, game.GetPriceText(),
+			subscription.SubscriptionPrice,
+			game.Url,
 		)
 
 		replyMarkup = model.NewGameUnsubscribeKeyboard(game.ID)
