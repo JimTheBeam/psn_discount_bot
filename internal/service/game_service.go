@@ -35,9 +35,10 @@ func (s *Service) SubscribeToGame(data payload.Subscribe) (string, error) {
 		return "", ErrInternal
 	}
 
-	responseMsg := fmt.Sprintf("You have subscribed!\nGame: %s\n\nPrice notified: %.2f",
+	responseMsg := fmt.Sprintf("You have subscribed!\nGame: %s\n\nPrice notified: %.2f\n\n%s",
 		game.Name,
 		data.Price,
+		game.Url,
 	)
 
 	if isSubscribed {
