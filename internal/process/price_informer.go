@@ -6,7 +6,7 @@ import (
 )
 
 type Bot interface {
-	SendText(chatID int64, message string)
+	SendText(chatID int64, message string) error
 }
 
 type PriceInformer struct {

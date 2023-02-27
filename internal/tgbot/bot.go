@@ -2,30 +2,21 @@ package tgbot
 
 import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"psn_discount_bot/internal/config"
 	"psn_discount_bot/internal/logger"
-	"psn_discount_bot/internal/model"
-	"psn_discount_bot/internal/model/payload"
 )
 
-type Service interface {
-	SubscribeToGame(data payload.Subscribe) (string, error)
-	Unsubscribe(userID, gameID int) (model.Game, error)
-	GetSubscriptions(data payload.Subscriptions) ([]model.UsersGames, error)
-	CreateUser(currentUser model.User)
+type HandlerFunc func(c Context) error
 
-	GetGame(userID int, url string) (model.Game, *model.UsersGames, error)
-	GetGameByID(userID, gameID int) (model.Game, *model.UsersGames, error)
-}
-
-type TgBot struct {
+type Bot struct {
 	Bot     *tgbotapi.BotAPI
-	service Service
+	handler Handler
 	log     *logger.Entry
-	cfg     *Config
+	cfg     *config.BotConfig
 	quit    chan struct{}
 }
 
-func New(cfg *Config, log *logger.Entry, service Service) *TgBot {
+func New(cfg *config.BotConfig, log *logger.Entry, handler Handler) *Bot {
 	bot, err := tgbotapi.NewBotAPI(cfg.Token)
 	if err != nil {
 		//todo:
@@ -36,16 +27,16 @@ func New(cfg *Config, log *logger.Entry, service Service) *TgBot {
 
 	log.Infof("Authorized on account %s", bot.Self.UserName)
 
-	return &TgBot{
+	return &Bot{
 		Bot:     bot,
-		service: service,
+		handler: handler,
 		log:     log,
 		cfg:     cfg,
 		quit:    make(chan struct{}),
 	}
 }
 
-func (b *TgBot) Run() {
+func (b *Bot) Run() {
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = b.cfg.UpdatesTimeout
 
@@ -57,6 +48,8 @@ func (b *TgBot) Run() {
 
 			if update.CallbackQuery != nil {
 				b.CallbackRouter(update)
+
+				continue
 			}
 
 			if update.Message == nil {
@@ -78,6 +71,6 @@ func (b *TgBot) Run() {
 	}
 }
 
-func (b *TgBot) Close() {
+func (b *Bot) Close() {
 	b.quit <- struct{}{}
 }

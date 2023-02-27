@@ -6,6 +6,7 @@ import (
 	"os/signal"
 	"psn_discount_bot/internal/config"
 	"psn_discount_bot/internal/connector"
+	"psn_discount_bot/internal/handler"
 	"psn_discount_bot/internal/httpclient"
 	"psn_discount_bot/internal/logger"
 	"psn_discount_bot/internal/parser"
@@ -17,7 +18,7 @@ import (
 )
 
 type Daemon struct {
-	bot    *tgbot.TgBot
+	bot    *tgbot.Bot
 	config *config.Config
 	conn   connector.IConnector
 	repo   *repository.Repo
@@ -46,7 +47,7 @@ func (d *Daemon) Run() {
 
 	serviceClient := service.NewService(d.repo, d.parser, d.logger)
 
-	d.bot = tgbot.New(&d.config.App.Bot, d.logger, serviceClient)
+	d.bot = tgbot.New(&d.config.App.Bot, d.logger, handler.NewHandler(serviceClient))
 
 	d.priceCheckerProcessor = process.NewPriceChecker(&d.config.App.Processors.PriceChecker, d.logger, d.repo, d.cron, d.parser)
 	d.priceInformerProcessor = process.NewPriceInformer(&d.config.App.Processors.PriceInformer, d.logger, d.repo, d.cron, d.bot)

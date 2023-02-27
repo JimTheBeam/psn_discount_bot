@@ -9,7 +9,6 @@ import (
 	"psn_discount_bot/internal/connector"
 	"psn_discount_bot/internal/httpclient"
 	"psn_discount_bot/internal/process"
-	"psn_discount_bot/internal/tgbot"
 )
 
 type (
@@ -19,7 +18,7 @@ type (
 	}
 
 	App struct {
-		Bot        tgbot.Config      `yaml:"bot"`
+		Bot        BotConfig         `yaml:"bot"`
 		Log        log               `yaml:"log"`
 		HTTPClient httpclient.Config `yaml:"http_client"`
 		Processors Processors        `yaml:"processors"`
@@ -30,6 +29,24 @@ type (
 		PriceInformer process.PriceInformerConfig `yaml:"price_informer"`
 	}
 )
+
+type BotConfig struct {
+	Token          string `yaml:"token"`
+	Debug          bool   `yaml:"debug"`
+	UpdatesTimeout int    `yaml:"updates_timeout"`
+}
+
+func (c *BotConfig) Validate() error {
+	if c.Token == "" {
+		return errors.New("token is empty")
+	}
+
+	if c.UpdatesTimeout <= 0 {
+		return errors.New("updates_timeout must be greater than zero")
+	}
+
+	return nil
+}
 
 type log struct {
 	Level string `yaml:"level"`
