@@ -80,11 +80,7 @@ func (p *PriceChecker) parseCurrentPrices() {
 		return
 	}
 
-	if len(games) == 0 {
-		p.logger.Debug("no games for parsing")
-
-		return
-	}
+	p.logger.Debugf("got %d games for parsing", len(games))
 
 	for i := range games {
 		parsedGame, err := p.parser.ParseGame(games[i].Url)
