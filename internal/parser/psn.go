@@ -104,6 +104,10 @@ func parseGamePrices(gameCard *goquery.Selection) []model.Price {
 func parsePriceCurrency(priceStr string) (float64, string) {
 	parts := strings.Split(priceStr, " ")
 
+	if len(parts) == 1 {
+		parts = strings.Split(priceStr, " ")
+	}
+
 	if len(parts) != 2 {
 		return 0, ""
 	}
